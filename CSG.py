@@ -28,12 +28,6 @@ def update_conversion_rate(df, currency_rate):
 		else:
 			break;
 
-def get_currency(s):
-	s = str(s);
-	s = s.strip();
-	return filterfalse(str.isdigit, s);
-
-
 path = os.getcwd();
 slash = "/";
 if (platform == "win32"):
@@ -44,6 +38,7 @@ comparative_df = pd.DataFrame();
 print(comparative_df);
 needs_assignment = True;
 currency_rate = {'$': 1, '€': 1, '£': 1, '₹': 1};
+non_vendor_columns = 0;
 for f in input_files:
 	# f contains the path to all csv that have to considered input
 	vendor = get_vendor_name(f);
@@ -60,6 +55,7 @@ for f in input_files:
 		print(assingment_columns)
 		for col in assingment_columns:
 			comparative_df[col] = df[col];
+		non_vendor_columns = len(comparative_df.columns);
 		needs_assignment = False;
 	else:
 		needs_assignment = False;
@@ -103,4 +99,13 @@ for f in input_files:
 	print(df);
 
 
+
+# Add L1 Vendor
+min_total = comparative_df.loc[:, comparative_df.columns[non_vendor_columns:]].idxmin(axis = 1)
+comparative_df['L1 Vendor'] = min_total.to_numpy();
+
+
 print(comparative_df)
+
+outputfile = "comparative_sheet.xlsx";
+comparative_df.to_excel("output" + slash + outputfile, index = False);
