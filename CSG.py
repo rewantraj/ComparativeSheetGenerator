@@ -1,6 +1,5 @@
 # Author: Rewant Raj
 
-import openpyxl
 import os
 import glob
 from sys import platform
@@ -92,7 +91,8 @@ for f in input_files:
 		needs_assignment = False;
 	else:
 		if(not comparative_df[df.columns[:non_vendor_columns]].equals(df[df.columns[:non_vendor_columns]])):
-			print("Quotations don't match", stderr);
+			print(comparative_df[df.columns[:non_vendor_columns]].compare(df[df.columns[:non_vendor_columns]], align_axis = 0, result_names = ('current', 'previous')));
+			print(f"{f} doesn't match with the previous entries", stderr);
 			exit();
 		needs_assignment = False;
 	total_values = []
