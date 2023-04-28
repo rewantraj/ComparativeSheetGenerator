@@ -4,6 +4,8 @@ import openpyxl
 import os
 import glob
 from sys import platform
+from sys import stderr
+from sys import exit
 import pandas as pd
 import numpy as np
 import math
@@ -28,6 +30,41 @@ def update_conversion_rate(df, currency_rate):
 		else:
 			break;
 
+def fill_missing_values(df):
+	df['List Price of the Book (Single Copy)'].fillna("NA", inplace = True);
+	df['Conversion Rate'].fillna("NA", inplace = True);
+	df['Discount'].fillna("NA", inplace = True);
+	df['QTY'].fillna("NA", inplace = True);
+	df['Total Price (INR)'].fillna(math.inf, inplace = True);
+
+def get_min_total(row):
+	listprice = row['List Price of the Book (Single Copy)'];
+	conversion_rate = row['Conversion Rate'];
+	discount = row['Discount'];
+	quantity = row['QTY'];
+	total = row['Total Price (INR)'];
+	currency = '₹';
+	cost = 0;
+	
+	if(listprice == "NA"):
+		return total;
+	else:
+		currency = listprice[0];
+		cost = float(listprice[1:]);
+
+	if(conversion_rate == "NA"):
+		conversion_rate = currency_rate[currency];
+
+	if(discount == "NA"):
+		discount = 0.0;
+
+	if(quantity == "NA"):
+		quantity = 1;
+
+	new_total = quantity * (cost * conversion_rate) * (100 - discount) / 100;
+	total = min(total, new_total);
+	return total;
+
 path = os.getcwd();
 slash = "/";
 if (platform == "win32"):
@@ -35,16 +72,13 @@ if (platform == "win32"):
 input_files = glob.glob(os.path.join(path, "input" + slash + "*.xlsx"))
 # pd.set_option('display.max_columns', None);
 comparative_df = pd.DataFrame();
-print(comparative_df);
 needs_assignment = True;
 currency_rate = {'$': 1, '€': 1, '£': 1, '₹': 1};
 non_vendor_columns = 0;
 for f in input_files:
 	# f contains the path to all csv that have to considered input
 	vendor = get_vendor_name(f);
-	print(vendor)
 	df = pd.read_excel(f, skiprows = 4);
-	print(df.columns);
 	# ['SL.No', 'Indent. NO', 'Author', 'Title', 'Ed/Year', 'Publisher', 'List Price of the Book (Single Copy)', 'Conversion Rate', 'Discount', 'QTY', 'Total Price (INR)']
 	update_conversion_rate(df, currency_rate);
 	print(currency_rate);
@@ -52,49 +86,21 @@ for f in input_files:
 
 	if(needs_assignment):
 		assingment_columns = [df.columns[i] for i in range(6)];
-		print(assingment_columns)
 		for col in assingment_columns:
 			comparative_df[col] = df[col];
 		non_vendor_columns = len(comparative_df.columns);
 		needs_assignment = False;
 	else:
+		if(not comparative_df[df.columns[:non_vendor_columns]].equals(df[df.columns[:non_vendor_columns]])):
+			print("Quotations don't match", stderr);
+			exit();
 		needs_assignment = False;
-		# check quotation response validity
 	total_values = []
-	df['List Price of the Book (Single Copy)'].fillna("NA", inplace = True);
-	df['Conversion Rate'].fillna("NA", inplace = True);
-	df['Discount'].fillna("NA", inplace = True);
-	df['QTY'].fillna("NA", inplace = True);
-	df['Total Price (INR)'].fillna(math.inf, inplace = True);
+	fill_missing_values(df);
 	for i, r in df.iterrows():
-		listprice = r['List Price of the Book (Single Copy)'];
-		conversion_rate = r['Conversion Rate'];
-		discount = r['Discount'];
-		quantity = r['QTY'];
-		total = r['Total Price (INR)'];
-		currency = '₹';
-		cost = 0;
-		if(listprice == "NA"):
-			total_values.append(total);
-			continue;
-		else:
-			currency = listprice[0];
-			cost = float(listprice[1:]);
-
-		if(conversion_rate == "NA"):
-			conversion_rate = currency_rate[currency];
-
-		if(discount == "NA"):
-			discount = 0.0;
-
-		if(quantity == "NA"):
-			quantity = 1;
-
-		new_total = quantity * (cost * conversion_rate) * (100 - discount) / 100;
-		total = min(total, new_total);
+		total = get_min_total(r);
 		total_values.append(total);
 		
-	# df['currency'] = df['List Price of the Book (Single Copy)'].apply(lambda x: not x.isdigit());
 	comparative_df[vendor] = total_values;
 	print(df);
 
